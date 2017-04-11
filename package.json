@@ -1,6 +1,6 @@
 {
   "name": "opengtindb-client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "NodeJS Client to access the Open EAN/GTIN Database API (http://opengtindb.org/)",
   "main": "index.js",
   "scripts": {
@@ -16,7 +16,14 @@
   "author": {
     "name": "neuwaerts GmbH",
     "email": "info@neuwaerts.de"
-  }, 
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felixwahner/opengtindb-client"
+  },
+  "bugs": {
+    "url": "https://github.com/felixwahner/opengtindb-client/issues"
+  },
   "keywords": [
     "EAN",
     "GTIN",
@@ -27,6 +34,6 @@
   "dependencies": {
     "axios": "^0.16.0",
     "generic-bitmask": "0.0.7",
-    "babel-preset-es2015": "^6.24.0"
+    "iconv-lite": "^0.4.15"
   }
 }

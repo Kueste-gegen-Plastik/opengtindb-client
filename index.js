@@ -2,23 +2,19 @@
 
 const   axios = require('axios'),
         Mask = require('generic-bitmask').Mask,
+        iconv = require('iconv-lite'),
         Descriptor = require('generic-bitmask').Descriptor,
+        utf8 = require('utf8'),
+        config = require('./config.js'),
         apiUrl = `http://opengtindb.org/`,
-        paramRegex = /^\s*([\w\.\-\_]+)\s*=\s*(.*?)\s*$/, 
-        contentsMask = {
-            'lactose_free' : 1,  // (binär 000000000001) - laktosefrei
-            'caffeine_free' : 2,  // (binär 000000000010) - koffeeinfrei
-            'diet_food' : 4, //(binär 000000000100) - diätetisches Lebensmittel
-            'gluten_free' : 8, //(binär 000000001000) - glutenfrei
-            'fructose_free' : 16, // (binär 000000010000) - fruktosefrei
-            'organic_food' : 32, // (binär 000000100000) - BIO-Lebensmittel nach EU-Ökoverordnung
-            'fairtrade' : 64, // (binär 000001000000) - fair gehandeltes Produkt nach FAIRTRADE™-Standard
-            'vegetarian' : 128, // (binär 000010000000) - vegetarisch
-            'vegan' : 256, //(binär 000100000000) - vegan
-            'microplastic' : 512, //(binär 001000000000) - Warnung vor Mikroplastik
-            'mineral_oil_warning' :  1024, // (binär 010000000000) - Warnung vor Mineralöl
-            'nicotine_warning' :  2048  // (binär 100000000000) - Warnung vor Nikotin
-        }
+        paramRegex = /^\s*([\w\.\-\_]+)\s*=\s*(.*?)\s*$/,
+        contentsMask = config.contentsMask,
+        errorMessages = config.errors,
+        cat1 = config.cat1,
+        cat2 = config.cat2;
+
+
+
 /**
  * Class to do query the OpenGtinDB API
  */
@@ -29,7 +25,7 @@ class OpenGtinDB {
      * @param {string} apiKey - The API key.
      * @param {Object} [contentsMask] - The Bitmask-Descriptor for the "contents" of a product as described at: http://opengtindb.org/api.php
      * @return {Object} the OpenGtinDB-Client instance
-     * @throws {Error} 
+     * @throws {Error}
      */
     constructor(apiKey, mask) {
         if(typeof apiKey !== 'string') throw new Error('Please provide the userID as a String');
@@ -40,40 +36,79 @@ class OpenGtinDB {
     }
 
     /**
+     * @param {arraybuffer} data - The query result as an ArrayBuffer
+     * @return {string} data - The decoded Data as UTF-8
+     */
+    _cleanResponse(data) {
+        return iconv.decode(data, 'iso-8859-15');
+    }
+
+    /**
      * Gets a product by its EAN
-     * @param {string} ean 
-     * @returns {Promise} 
+     * @param {string} ean - The EAN
+     * @returns {Promise}
      */
     get(ean) {
         ean = ean + '';
-        return axios.get(apiUrl,{
+        return axios({
+            method: 'get',
+            url: apiUrl,
             params: {
                 queryid: this.apiKey,
                 ean: ean,
-                cmd: 'query'
+                cmd: 'query',
             },
-            responseType : 'text'
+            responseType: 'arraybuffer'
         }).then(this.parseResponse.bind(this));
     }
 
     /**
      * Posts a new product to the API
-     * @param {string} ean 
-     * @returns {promise} 
+     * @param {string} ean - The EAN
+     * @param {string} name - The generic product name (i.e. "Tea", "Coffee", ...)
+     * @param {string} fcat1 - The Main category Title (see config.js)
+     * @param {string} fcat2 - The subcategory Title (see config.js)
+     * @param {object} options - Optional options: fullname, descr, vendor, contflag (@see: http://opengtindb.org/api.php)
+     * @returns {promise}
      */
-    setEan(ean, name, fcat1, fcat2, options = {}) {
+    set(ean, name, fcat1, fcat2, options = {}) {
+
+        [ean, name, fcat1, fcat2].forEach(param => {
+            if(typeof param === 'undefined') {
+                return Promise.reject('Please provide all mandatory parameters');
+            }
+        });
+
+        if(cat1.indexOf(fcat1) < 0) {
+            return Promise.reject('Please provide a valid category');
+        } else {
+            fcat1 = cat1.indexOf(fcat1);
+        }
+
+        if(cat2[cat1].indexOf(fcat2) < 0) {
+            return Promise.reject('Please provide a valid subcategory');
+        } else {
+            fcat2 = cat2[cat1].indexOf(fcat2);
+        }
+
         let postOptions = {
             queryid: this.apiKey,
             ean: ean,
             cmd: 'submit',
             name: name,
-            fcat1: fcat1,
-            fcat2: fcat2
+            fcat1: fcat1+1,
+            fcat2: fcat2+1
         };
-        Object.assign(postOptions, options, {
-            responseType : 'text'
+        Object.assign(postOptions, options);
+        return axios({
+            method: 'post',
+            url: apiUrl,
+            data: postOptions,
+            responseType : 'arraybuffer'
+        }).then(res => {
+            return this._cleanResponse(res.data);
         });
-        return axios.post(apiUrl, postOptions).then(this.parseResponse.bind(this));
+
     }
 
     /**
@@ -82,7 +117,8 @@ class OpenGtinDB {
      * @returns {Object}
      */
     parseResponse(resp) {
-	    let lines = resp.data.split(/\r\n|\r|\n/), 
+        resp.data = this._cleanResponse(resp.data)
+	    let lines = resp.data.split(/\r\n|\r|\n/),
             cnt = -1,
             retVal = {
                 error : true,
@@ -111,6 +147,7 @@ class OpenGtinDB {
             }
         });
         return retVal;
+
     }
 
 

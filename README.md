@@ -33,7 +33,7 @@ PRINTS:
             subcat: 'Limonaden',
             maincatnum: '11',
             subcatnum: '7',
-            contents: [Object],
+            contents: ['lactose_free', 'caffeine_free', 'gluten_free'],
             pack: '0',
             origin: 'Frankreich',
             descr: 'Erfrischungsgetränk aus natürlichen Mineralwasser mit Fruchtgeschmack\\nZutaten: Natürliches Mineralwasser Volvic (95,7%), Zucker (3%), Säuerun
