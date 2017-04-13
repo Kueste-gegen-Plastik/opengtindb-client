@@ -1,6 +1,6 @@
 {
   "name": "opengtindb-client",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "NodeJS Client to access the Open EAN/GTIN Database API (http://opengtindb.org/)",
   "main": "index.js",
   "scripts": {
