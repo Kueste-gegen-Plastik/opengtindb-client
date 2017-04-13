@@ -86,6 +86,14 @@ module.exports = {
         {
             code: 'data already submitted',
             msg: 'Daten wurden bereits übertragen'
+        },
+        {
+            code: 'queryid missing or wrong',
+            msg: 'Die UserID/queryid fehlt in der Abfrage oder ist für diese Funktion nicht freigeschaltet'
+        },
+        {
+            code: 'unknown command',
+            msg: 'Es wurde mit dem Parameter "cmd" ein unbekanntes Kommando übergeben'
         }
     ],
     contentsMask : {
@@ -101,5 +109,16 @@ module.exports = {
         'microplastic' : 512, //(binär 001000000000) - Warnung vor Mikroplastik
         'mineral_oil_warning' :  1024, // (binär 010000000000) - Warnung vor Mineralöl
         'nicotine_warning' :  2048  // (binär 100000000000) - Warnung vor Nikotin
+    },
+    packMask : {
+        'plastic' : 1,  // (binär 000000000001) - laktosefrei
+        'composite_material' : 2,  // (binär 000000000010) - koffeeinfrei
+        'paper' : 4, //(binär 000000000100) - diätetisches Lebensmittel
+        'glass' : 8, //(binär 000000001000) - glutenfrei
+        'metal' : 16, // (binär 000000010000) - fruktosefrei
+        'unpacked' : 32, // (binär 000000100000) - BIO-Lebensmittel nach EU-Ökoverordnung
+        'no_plastic' : 64, // (binär 000001000000) - fair gehandeltes Produkt nach FAIRTRADE™-Standard
+        'packaging_too_much' : 128, // (binär 000010000000) - vegetarisch
+        'packaging_okay' : 256 //(binär 000100000000) - vegan
     }
 }

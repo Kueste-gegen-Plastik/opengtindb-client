@@ -4,11 +4,11 @@ const   axios = require('axios'),
         Mask = require('generic-bitmask').Mask,
         iconv = require('iconv-lite'),
         Descriptor = require('generic-bitmask').Descriptor,
-        utf8 = require('utf8'),
         config = require('./config.js'),
         apiUrl = `http://opengtindb.org/`,
         paramRegex = /^\s*([\w\.\-\_]+)\s*=\s*(.*?)\s*$/,
         contentsMask = config.contentsMask,
+        packMask = config.packMask,
         errorMessages = config.errors,
         cat1 = config.cat1,
         cat2 = config.cat2;
@@ -27,11 +27,11 @@ class OpenGtinDB {
      * @return {Object} the OpenGtinDB-Client instance
      * @throws {Error}
      */
-    constructor(apiKey, mask) {
+    constructor(apiKey) {
         if(typeof apiKey !== 'string') throw new Error('Please provide the userID as a String');
         this.apiKey = apiKey;
-        this.contentsMask = mask || contentsMask;
-        this.Descriptor = new Descriptor(this.contentsMask);
+        this.contentsDescriptor = new Descriptor(contentsMask);
+        this.packDescriptor = new Descriptor(packMask);
         return this;
     }
 
@@ -59,55 +59,49 @@ class OpenGtinDB {
                 cmd: 'query',
             },
             responseType: 'arraybuffer'
-        }).then(this.parseResponse.bind(this));
+        }).then(res => this.parseResponse(res) );
     }
 
     /**
      * Posts a new product to the API
-     * @param {string} ean - The EAN
-     * @param {string} name - The generic product name (i.e. "Tea", "Coffee", ...)
-     * @param {string} fcat1 - The Main category Title (see config.js)
-     * @param {string} fcat2 - The subcategory Title (see config.js)
-     * @param {object} options - Optional options: fullname, descr, vendor, contflag (@see: http://opengtindb.org/api.php)
+     * @param {object} options - Mandatory: ean, Optional options: fullname, descr, vendor, contflag (@see: http://opengtindb.org/api.php)
+     * @param {boolean} test - testmode
      * @returns {promise}
      */
-    set(ean, name, fcat1, fcat2, options = {}) {
+    post(options = {}, test = false) {
 
-        [ean, name, fcat1, fcat2].forEach(param => {
-            if(typeof param === 'undefined') {
-                return Promise.reject('Please provide all mandatory parameters');
+        ['ean', 'name', 'fcat1', 'fcat2'].forEach(param => {
+            if(!options.hasOwnProperty(param) || typeof options[param] === 'undefined' || options[param] === '') {
+                return Promise.reject('Please provide all mandatory parameters: ean, name, fcat1, fcat2');
             }
         });
 
-        if(cat1.indexOf(fcat1) < 0) {
+        if(cat1.indexOf(options.fcat1) < 0) {
             return Promise.reject('Please provide a valid category');
         } else {
-            fcat1 = cat1.indexOf(fcat1);
+            options.fcat1 = cat1.indexOf(options.fcat1);
         }
 
-        if(cat2[cat1].indexOf(fcat2) < 0) {
+        if(cat2[options.fcat1].indexOf(options.fcat2) < 0) {
             return Promise.reject('Please provide a valid subcategory');
         } else {
-            fcat2 = cat2[cat1].indexOf(fcat2);
+            options.fcat2 = cat2[options.fcat1].indexOf(options.fcat2);
         }
 
         let postOptions = {
-            queryid: this.apiKey,
-            ean: ean,
+            queryid: parseInt(this.apiKey),
             cmd: 'submit',
-            name: name,
-            fcat1: fcat1+1,
-            fcat2: fcat2+1
+            maincatnum: options.fcat1+1,
+            subcatnum: options.fcat2+1,
+            test: test ? 1 : 0
         };
-        Object.assign(postOptions, options);
+        Object.assign(options, postOptions);
         return axios({
             method: 'post',
-            url: apiUrl,
-            data: postOptions,
+            url: apiUrl + 'submit.php',
+            params: options,
             responseType : 'arraybuffer'
-        }).then(res => {
-            return this._cleanResponse(res.data);
-        });
+        }).then(res => this.parseResponse(res) );
 
     }
 
@@ -129,14 +123,19 @@ class OpenGtinDB {
             if(paramRegex.test(line)) {
                 let match = line.match(paramRegex),
                     currentProduct = retVal.data[cnt];
-                if(match[1] == 'error') {
-                    // set the error-state
-                    retVal.error = match[2];
-                } else if(match[1] == 'contents') {
-                    // read the contents from the bitmask
-                    currentProduct['contents'] = this.Descriptor.extract(new Mask(match[2] + ''));
-                } else {
-                    retVal.data[cnt][match[1]] = match[2];
+                switch(match[1]) {
+                    case "error":
+                        retVal.error = match[2];
+                        break;
+                    case "contents":
+                        currentProduct['contents'] = this.contentsDescriptor.extract(new Mask(match[2] + ''));
+                        break;
+                    case "pack":
+                        currentProduct['pack'] = this.packDescriptor.extract(new Mask(match[2] + ''));
+                        break;
+                    default:
+                        retVal.data[cnt][match[1]] = match[2];
+                        break;
                 }
             } else {
                 // add a new product
@@ -146,6 +145,9 @@ class OpenGtinDB {
                 }
             }
         });
+        if(retVal.error > 0) {
+            throw new Error(errorMessages[parseInt(retVal.error,10)].msg);
+        }
         return retVal;
 
     }

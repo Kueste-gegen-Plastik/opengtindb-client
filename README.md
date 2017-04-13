@@ -13,7 +13,7 @@ Require the client inside your NodeJS application: `const opengtindb = require('
 ## Usage
 
 ### GET
-After instantiating the package, use `opengtindb.getEan(<ean>)` to query information about an EAN.  
+After instantiating the package, use `opengtindb.get(<ean>)` to query information about an EAN.  
 
 **Example**
 ```js
@@ -51,6 +51,29 @@ PRINTS:
 
 ### POST
 
-TBD
+To create a new product use the `post` method and provide the mandatory params within the options object.
+For development purposes there is a "test" param that prevents the API from creating database entrys. 
+It can be activated by provding a second, boolean param to the post method: `post({...}, true)`.
 
+**Example**
+```js
+var tst = opengtindb.post({
+    ean: 47114223666, // ean - mandatory
+    name: 'Foo', // Generic product name - mandatory
+    fcat1: 'Waschen, Reinigen', // main category title - mandatory
+    fcat2: 'WC- und Bad Reiniger', // sub category title - mandatory
+    fullname : 'Foo Bar Product', // full product name
+    vendor: 'Acme corp' // vendor,
+    descr: 'Some description'
+}).then(res => {
+    // the result will be 
+    // { error: '0', data: [ {} ] }
+    console.log(res);
+}).catch(err => {
+    // errors from the api get thrown as
+    // an js-error. be sure to catch and handle them
+    // accordingly
+    console.log(err);
+})
+```
 
