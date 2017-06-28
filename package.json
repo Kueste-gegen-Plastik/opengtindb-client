@@ -32,8 +32,8 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.16.0",
+    "axios": "^0.16.2",
     "generic-bitmask": "0.0.7",
-    "iconv-lite": "^0.4.15"
+    "iconv-lite": "^0.4.18"
   }
 }
